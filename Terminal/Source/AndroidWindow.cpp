@@ -25,6 +25,9 @@
 #include "AndroidWindow.hpp"
 #include "OpenGL.hpp"
 #include "Log.hpp"
+// Вывод Size в поток объявлен здесь, а не в Size.hpp. На настольных
+// платформах это не всплывало: там его подтягивали соседние заголовки.
+#include "Geometry.hpp"
 
 namespace BearLibTerminal
 {
