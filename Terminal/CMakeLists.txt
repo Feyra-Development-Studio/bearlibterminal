@@ -31,8 +31,31 @@ else()
 	file(GLOB TERMINAL_SOURCES ./Source/*.cpp) # FIXME: manual selection
 endif()
 
-set(OpenGL_GL_PREFERENCE LEGACY)
-find_package(OpenGL)
+# Оконный слой у каждой платформы свой, и чужой не соберётся: X11Window тянет
+# заголовки X11, которых на Android нет вовсе. Раньше сходило с рук, потому что
+# все три поддерживаемые системы — настольные.
+foreach(WINDOW_SOURCE X11Window WinApiWindow CocoaWindow AndroidWindow)
+	set(KEEP FALSE)
+	if(WINDOW_SOURCE STREQUAL "X11Window" AND UNIX AND NOT APPLE AND NOT ANDROID)
+		set(KEEP TRUE)
+	elseif(WINDOW_SOURCE STREQUAL "WinApiWindow" AND WIN32)
+		set(KEEP TRUE)
+	elseif(WINDOW_SOURCE STREQUAL "CocoaWindow" AND APPLE)
+		set(KEEP TRUE)
+	elseif(WINDOW_SOURCE STREQUAL "AndroidWindow" AND ANDROID)
+		set(KEEP TRUE)
+	endif()
+	if(NOT KEEP)
+		list(FILTER TERMINAL_SOURCES EXCLUDE REGEX "${WINDOW_SOURCE}\\.(cpp|mm)$")
+	endif()
+endforeach()
+
+# На Android никакого настольного OpenGL нет: там GLESv3 и EGL, и искать их
+# через find_package незачем — они лежат в самом NDK.
+if(NOT ANDROID)
+	set(OpenGL_GL_PREFERENCE LEGACY)
+	find_package(OpenGL)
+endif()
 if (APPLE)
 	find_library(COCOA_LIBRARY Cocoa)
 endif()
@@ -69,6 +92,9 @@ if(WIN32)
 	target_compile_definitions(BearLibTerminal PRIVATE UNICODE)
 	target_link_libraries(BearLibTerminal winmm.lib)
 	target_link_libraries(BearLibTerminal ${PROJECT_SOURCE_DIR}/Resource/Terminal-${BITNESS}bit.res)
+elseif(ANDROID)
+	# log — вывод в logcat, android — ANativeWindow и AAssetManager.
+	target_link_libraries(BearLibTerminal GLESv3 EGL log android)
 elseif(LINUX)
 	target_link_libraries(BearLibTerminal pthread)
 elseif(APPLE)

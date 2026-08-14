@@ -1,0 +1,100 @@
+name: сборка и проверки
+
+# Прогон только по требованию и по правкам кода в dev.
+#
+# Правки текста сюда не попадают: тесты, срывающиеся на README, шлют письма о
+# падении там, где падать нечему.
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'Terminal/**'
+      - 'CMakeLists.txt'
+      - 'tests/**'
+      - '.github/workflows/**'
+  workflow_dispatch:
+    inputs:
+      run_desktop:
+        description: 'Гонять настольные проверки (отрисовка, журнал, Паскаль, экран)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: сборка под Android (arm64-v8a)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Что за NDK на бегунке
+        run: |
+          set -euo pipefail
+          echo "ANDROID_NDK_ROOT=${ANDROID_NDK_ROOT:-нет}"
+          echo "ANDROID_NDK_LATEST_HOME=${ANDROID_NDK_LATEST_HOME:-нет}"
+          ls "${ANDROID_NDK_LATEST_HOME:-$ANDROID_NDK_ROOT}/build/cmake/android.toolchain.cmake"
+
+      - name: Сборка
+        run: |
+          set -euo pipefail
+          NDK="${ANDROID_NDK_LATEST_HOME:-$ANDROID_NDK_ROOT}"
+          # minSdk 28 задан не отсюда: планку поднял Renjin, которому нужен
+          # API 28, чтобы дексоваться без предупреждений.
+          cmake -S . -B build-android \
+            -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-28 \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-android --target BearLibTerminal -j"$(nproc)"
+
+      - name: Что получилось
+        run: |
+          set -euo pipefail
+          SO="$(find Output -name 'libBearLibTerminal.so' | head -1)"
+          [ -n "$SO" ] || { echo "библиотека не собралась"; exit 1; }
+          ls -sh "$SO"
+          file "$SO"
+          # Проверяем, что это действительно arm64 под Android, а не то, что
+          # случайно собралось для бегунка.
+          file "$SO" | grep -q "ARM aarch64" || { echo "не arm64"; exit 1; }
+          echo "== связывается с чем =="
+          "${ANDROID_NDK_LATEST_HOME:-$ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf" \
+            -d "$SO" | grep NEEDED
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bearlibterminal-android-arm64
+          path: Output/**/libBearLibTerminal.so
+          if-no-files-found: error
+
+  # Настольные проверки выключены по умолчанию: сейчас идёт порт под Android,
+  # и гонять на каждой правке то, что к нему не относится, значит жечь время и
+  # внимание. Включаются вручную при запуске задания.
+  desktop:
+    name: настольные проверки
+    if: inputs.run_desktop
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Окружение
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq cmake g++ libx11-dev libgl1-mesa-dev \
+            xvfb x11-utils imagemagick fpc
+
+      - name: Отрисовка не изменилась
+        run: tests/render/check.sh
+
+      - name: Журнал
+        run: tests/log/check.sh
+
+      - name: Привязка для Паскаля
+        run: tests/pascal/check.sh
+
+      - name: Размер ячейки и экран
+        run: tests/screen/check.sh

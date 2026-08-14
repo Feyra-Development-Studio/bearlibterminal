@@ -21,6 +21,7 @@
 */
 
 #include "Window.hpp"
+#include "AndroidWindow.hpp"
 #if defined(__linux)
 #include "X11Window.hpp"
 #endif
@@ -80,6 +81,9 @@ namespace BearLibTerminal
 #endif
 #if defined(__APPLE__)
         return std::make_unique<CocoaWindow>(handler);
+#endif
+#if defined(__ANDROID__)
+		return std::make_unique<AndroidWindow>(handler);
 #endif
     }
 }

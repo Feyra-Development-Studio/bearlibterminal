@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.5)
 
 project(BearLibTerminal)
 
-if (NOT ((${CMAKE_SYSTEM_NAME} MATCHES "Linux") OR (${CMAKE_SYSTEM_NAME} MATCHES "Windows") OR (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")))
+if (NOT ((${CMAKE_SYSTEM_NAME} MATCHES "Linux") OR (${CMAKE_SYSTEM_NAME} MATCHES "Windows") OR (${CMAKE_SYSTEM_NAME} MATCHES "Darwin") OR (${CMAKE_SYSTEM_NAME} MATCHES "Android")))
 	message(FATAL_ERROR "${CMAKE_SYSTEM_NAME} is not supported.")
 endif()
 
@@ -16,6 +16,6 @@ endif()
 
 add_subdirectory(./Terminal)
 
-if(IS_DIRECTORY "${CMAKE_SOURCE_DIR}/Samples")
+if(IS_DIRECTORY "${CMAKE_SOURCE_DIR}/Samples" AND NOT ANDROID)
     add_subdirectory(./Samples/Omni)
 endif()
