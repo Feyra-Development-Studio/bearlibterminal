@@ -29,6 +29,7 @@
 #include "Utility.hpp"
 #include "Geometry.hpp"
 #include "Log.hpp"
+#include "VertexBatch.hpp"
 #include "Palette.hpp"
 #include "BearLibTerminal.h"
 #include <cmath>
@@ -2081,24 +2082,24 @@ namespace BearLibTerminal
 			/*
 			// Single-quad version (incorrect interpolation)
 			// Top-left
-			glColor4ub(leaf.color[0].r, leaf.color[0].g, leaf.color[0].b, leaf.color[0].a);
-			glTexCoord2f(texture_coords.tu1, texture_coords.tv1);
-			glVertex2i(left, top);
+			g_batch.Color(leaf.color[0].r, leaf.color[0].g, leaf.color[0].b, leaf.color[0].a);
+			g_batch.TexCoord(texture_coords.tu1, texture_coords.tv1);
+			g_batch.Vertex(left, top);
 
 			// Bottom-left
-			glColor4ub(leaf.color[1].r, leaf.color[1].g, leaf.color[1].b, leaf.color[1].a);
-			glTexCoord2f(texture_coords.tu1, texture_coords.tv2);
-			glVertex2i(left, bottom);
+			g_batch.Color(leaf.color[1].r, leaf.color[1].g, leaf.color[1].b, leaf.color[1].a);
+			g_batch.TexCoord(texture_coords.tu1, texture_coords.tv2);
+			g_batch.Vertex(left, bottom);
 
 			// Bottom-right
-			glColor4ub(leaf.color[2].r, leaf.color[2].g, leaf.color[2].b, leaf.color[2].a);
-			glTexCoord2f(texture_coords.tu2, texture_coords.tv2);
-			glVertex2i(right, bottom);
+			g_batch.Color(leaf.color[2].r, leaf.color[2].g, leaf.color[2].b, leaf.color[2].a);
+			g_batch.TexCoord(texture_coords.tu2, texture_coords.tv2);
+			g_batch.Vertex(right, bottom);
 
 			// Top-right
-			glColor4ub(leaf.color[3].r, leaf.color[3].g, leaf.color[3].b, leaf.color[3].a);
-			glTexCoord2f(texture_coords.tu2, texture_coords.tv1);
-			glVertex2i(right, top);
+			g_batch.Color(leaf.color[3].r, leaf.color[3].g, leaf.color[3].b, leaf.color[3].a);
+			g_batch.TexCoord(texture_coords.tu2, texture_coords.tv1);
+			g_batch.Vertex(right, top);
 			/*/
 
 			// 2-quad version
@@ -2116,61 +2117,61 @@ namespace BearLibTerminal
 
 			// First quad
 			// Top-left
-			glColor4ub(leaf.color[0].r, leaf.color[0].g, leaf.color[0].b, leaf.color[0].a);
-			glTexCoord2f(tile.texture_coords.tu1, tile.texture_coords.tv1);
-			glVertex2i(left, top);
+			g_batch.Color(leaf.color[0].r, leaf.color[0].g, leaf.color[0].b, leaf.color[0].a);
+			g_batch.TexCoord(tile.texture_coords.tu1, tile.texture_coords.tv1);
+			g_batch.Vertex(left, top);
 			// Bottom-left
-			glColor4ub(leaf.color[1].r, leaf.color[1].g, leaf.color[1].b, leaf.color[1].a);
-			glTexCoord2f(tile.texture_coords.tu1, tile.texture_coords.tv2);
-			glVertex2i(left, bottom);
+			g_batch.Color(leaf.color[1].r, leaf.color[1].g, leaf.color[1].b, leaf.color[1].a);
+			g_batch.TexCoord(tile.texture_coords.tu1, tile.texture_coords.tv2);
+			g_batch.Vertex(left, bottom);
 			// Center
-			glColor4ub(cr, cg, cb, ca);
-			glTexCoord2f(cu, cv);
-			glVertex2i(cx, cy);
+			g_batch.Color(cr, cg, cb, ca);
+			g_batch.TexCoord(cu, cv);
+			g_batch.Vertex(cx, cy);
 			// Top-right
-			glColor4ub(leaf.color[3].r, leaf.color[3].g, leaf.color[3].b, leaf.color[3].a);
-			glTexCoord2f(tile.texture_coords.tu2, tile.texture_coords.tv1);
-			glVertex2i(right, top);
+			g_batch.Color(leaf.color[3].r, leaf.color[3].g, leaf.color[3].b, leaf.color[3].a);
+			g_batch.TexCoord(tile.texture_coords.tu2, tile.texture_coords.tv1);
+			g_batch.Vertex(right, top);
 
 			// Second squad
 			// Bottom-right
-			glColor4ub(leaf.color[2].r, leaf.color[2].g, leaf.color[2].b, leaf.color[2].a);
-			glTexCoord2f(tile.texture_coords.tu2, tile.texture_coords.tv2);
-			glVertex2i(right, bottom);
+			g_batch.Color(leaf.color[2].r, leaf.color[2].g, leaf.color[2].b, leaf.color[2].a);
+			g_batch.TexCoord(tile.texture_coords.tu2, tile.texture_coords.tv2);
+			g_batch.Vertex(right, bottom);
 			// Top-right
-			glColor4ub(leaf.color[3].r, leaf.color[3].g, leaf.color[3].b, leaf.color[3].a);
-			glTexCoord2f(tile.texture_coords.tu2, tile.texture_coords.tv1);
-			glVertex2i(right, top);
+			g_batch.Color(leaf.color[3].r, leaf.color[3].g, leaf.color[3].b, leaf.color[3].a);
+			g_batch.TexCoord(tile.texture_coords.tu2, tile.texture_coords.tv1);
+			g_batch.Vertex(right, top);
 			// Center
-			glColor4ub(cr, cg, cb, ca);
-			glTexCoord2f(cu, cv);
-			glVertex2i(cx, cy);
+			g_batch.Color(cr, cg, cb, ca);
+			g_batch.TexCoord(cu, cv);
+			g_batch.Vertex(cx, cy);
 			// Bottom-left
-			glColor4ub(leaf.color[1].r, leaf.color[1].g, leaf.color[1].b, leaf.color[1].a);
-			glTexCoord2f(tile.texture_coords.tu1, tile.texture_coords.tv2);
-			glVertex2i(left, bottom);
+			g_batch.Color(leaf.color[1].r, leaf.color[1].g, leaf.color[1].b, leaf.color[1].a);
+			g_batch.TexCoord(tile.texture_coords.tu1, tile.texture_coords.tv2);
+			g_batch.Vertex(left, bottom);
 			//*/
 		}
 		else
 		{
 			// Single-colored version
-			glColor4ub(leaf.color[0].r, leaf.color[0].g, leaf.color[0].b, leaf.color[0].a);
+			g_batch.Color(leaf.color[0].r, leaf.color[0].g, leaf.color[0].b, leaf.color[0].a);
 
 			// Top-left
-			glTexCoord2f(tile.texture_coords.tu1, tile.texture_coords.tv1);
-			glVertex2i(left, top);
+			g_batch.TexCoord(tile.texture_coords.tu1, tile.texture_coords.tv1);
+			g_batch.Vertex(left, top);
 
 			// Bottom-left
-			glTexCoord2f(tile.texture_coords.tu1, tile.texture_coords.tv2);
-			glVertex2i(left, bottom);
+			g_batch.TexCoord(tile.texture_coords.tu1, tile.texture_coords.tv2);
+			g_batch.Vertex(left, bottom);
 
 			// Bottom-right
-			glTexCoord2f(tile.texture_coords.tu2, tile.texture_coords.tv2);
-			glVertex2i(right, bottom);
+			g_batch.TexCoord(tile.texture_coords.tu2, tile.texture_coords.tv2);
+			g_batch.Vertex(right, bottom);
 
 			// Top-right
-			glTexCoord2f(tile.texture_coords.tu2, tile.texture_coords.tv1);
-			glVertex2i(right, top);
+			g_batch.TexCoord(tile.texture_coords.tu2, tile.texture_coords.tv1);
+			g_batch.Vertex(right, top);
 		}
 	}
 
@@ -2195,7 +2196,7 @@ namespace BearLibTerminal
 
 		// Backgrounds
 		Texture::Disable();
-		glBegin(GL_QUADS);
+		g_batch.Begin(GL_QUADS);
 		{
 			int i = 0, left = 0, top = 0;
 			int w = m_world.state.cellsize.width;
@@ -2207,11 +2208,11 @@ namespace BearLibTerminal
 					Color& c = m_world.stage.frontbuffer.background[i];
 					if (c.a > 0)
 					{
-						glColor4ub(c.r, c.g, c.b, c.a);
-						glVertex2i(left+0, top+0);
-						glVertex2i(left+0, top+h);
-						glVertex2i(left+w, top+h);
-						glVertex2i(left+w, top+0);
+						g_batch.Color(c.r, c.g, c.b, c.a);
+						g_batch.Vertex(left+0, top+0);
+						g_batch.Vertex(left+0, top+h);
+						g_batch.Vertex(left+w, top+h);
+						g_batch.Vertex(left+w, top+0);
 					}
 
 					i += 1;
@@ -2222,7 +2223,7 @@ namespace BearLibTerminal
 				top += h;
 			}
 		}
-		glEnd();
+		g_batch.End();
 
 		Texture::Enable();
 
@@ -2233,8 +2234,8 @@ namespace BearLibTerminal
 		AtlasTexture* current_texture = nullptr;
 		auto replacement_tile = GetTileInfo(kUnicodeReplacementCharacter);
 
-		glBegin(GL_QUADS);
-		glColor4f(1, 1, 1, 1);
+		g_batch.Begin(GL_QUADS);
+		g_batch.Color(1.0f, 1.0f, 1.0f, 1.0f);
 		for (auto& layer: m_world.stage.frontbuffer.layers)
 		{
 			if (layer.crop.Area() > 0)
@@ -2243,10 +2244,10 @@ namespace BearLibTerminal
 				scissors.top = m_viewport_scissors.height - (scissors.top+scissors.height);
 				scissors += m_viewport_scissors.Location();
 
-				glEnd();
+				g_batch.End();
 				glEnable(GL_SCISSOR_TEST);
 				glScissor(scissors.left, scissors.top, scissors.width, scissors.height);
-				glBegin(GL_QUADS);
+				g_batch.Begin(GL_QUADS);
 
 				layer_scissors_applied = true;
 			}
@@ -2264,10 +2265,10 @@ namespace BearLibTerminal
 
 						if (tile->texture != current_texture)
 						{
-							glEnd();
+							g_batch.End();
 							tile->texture->Bind();
 							current_texture = tile->texture;
-							glBegin(GL_QUADS);
+							g_batch.Begin(GL_QUADS);
 						}
 
 						DrawTile(leaf, *tile, left, top, w2, h2);
@@ -2283,38 +2284,38 @@ namespace BearLibTerminal
 
 			if (layer_scissors_applied)
 			{
-				glEnd();
+				g_batch.End();
 				auto& scissors = m_viewport_scissors;
 				glScissor(scissors.left, scissors.top, scissors.width, scissors.height);
-				glBegin(GL_QUADS);
+				g_batch.Begin(GL_QUADS);
 				layer_scissors_applied = false;
 			}
 		}
-		glEnd();
+		g_batch.End();
 
 		if (m_show_grid)
 		{
 			int width = m_world.stage.size.width * m_world.state.cellsize.width;
 			int height = m_world.stage.size.height * m_world.state.cellsize.height;
-			glColor4f(1, 1, 1, 0.5f);
+			g_batch.Color(1.0f, 1.0f, 1.0f, 0.5f);
 			glDisable(GL_TEXTURE_2D);
 			glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
-			glBegin(GL_LINES);
+			g_batch.Begin(GL_LINES);
 			for (int i=0; i<=m_world.stage.size.width; i++)
 			{
 				int x = i*m_world.state.cellsize.width;
 				//if (i == m_world.stage.size.width) x -= 1;
-				glVertex2i(x, 0);
-				glVertex2i(x, height);
+				g_batch.Vertex(x, 0);
+				g_batch.Vertex(x, height);
 			}
 			for (int i=0; i<=m_world.stage.size.height; i++)
 			{
 				int y = i*m_world.state.cellsize.height;
 				//if (i == m_world.stage.size.height) y -= 1;
-				glVertex2i(0, y);
-				glVertex2i(width, y);
+				g_batch.Vertex(0, y);
+				g_batch.Vertex(width, y);
 			}
-			glEnd();
+			g_batch.End();
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			glEnable(GL_TEXTURE_2D);
 		}
