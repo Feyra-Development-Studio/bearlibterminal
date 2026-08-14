@@ -42,6 +42,9 @@
 #ifndef GL_QUADS
 #define GL_QUADS 0x0007
 #endif
+#ifndef GL_BGRA
+#define GL_BGRA GL_BGRA_EXT
+#endif
 #elif defined(__linux)
 #include <GL/gl.h>
 #elif defined(__APPLE__)
@@ -172,6 +175,14 @@ namespace BearLibTerminal
 	extern int g_max_texture_size;
 	extern bool g_has_texture_npot;
 	extern int g_texture_filter;
+
+	// Порядок составляющих цвета, который принимает видеокарта.
+	//
+	// В памяти пиксели лежат BGRA — так объявлен Color. Настольный OpenGL
+	// принимает такой порядок как есть, а в OpenGL ES формата GL_BGRA нет
+	// вовсе: там либо расширение GL_EXT_texture_format_BGRA8888, либо
+	// перестановка байтов перед загрузкой.
+	extern bool g_has_bgra;
 
 	void ProbeOpenGL();
 }

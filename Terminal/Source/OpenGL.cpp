@@ -135,6 +135,13 @@ namespace BearLibTerminal
 	bool g_has_texture_npot = false;
 	int g_texture_filter = GL_LINEAR;
 
+	// На настольных платформах BGRA есть всегда, на Android — как повезёт.
+#if defined(__ANDROID__)
+	bool g_has_bgra = false;
+#else
+	bool g_has_bgra = true;
+#endif
+
 	void ProbeOpenGL()
 	{
 		// Called right after the context becomes current on every platform,
@@ -151,5 +158,15 @@ namespace BearLibTerminal
 		std::transform(extensions.begin(), extensions.end(), extensions.begin(), ::tolower);
 		g_has_texture_npot = extensions.find("gl_arb_texture_non_power_of_two") != std::string::npos;
 		LOG(Info, "OpenGL: GPU " << (g_has_texture_npot? "supports": "does not support") << " NPOTD textures");
+
+#if defined(__ANDROID__)
+		// Расширение необязательное: на части устройств его нет, и опираться
+		// на него без проверки значит получить перепутанные местами синий и
+		// красный там, где его не окажется.
+		g_has_bgra = extensions.find("gl_ext_texture_format_bgra8888") != std::string::npos;
+		LOG(Info, "OpenGL: GPU " << (g_has_bgra? "supports": "does not support")
+			<< " BGRA textures, colour components will be "
+			<< (g_has_bgra? "uploaded as is": "reordered before upload"));
+#endif
 	}
 }

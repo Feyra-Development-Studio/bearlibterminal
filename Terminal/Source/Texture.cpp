@@ -25,10 +25,61 @@
 #include "VertexBatch.hpp"
 #include "OpenGL.hpp"
 #include "Log.hpp"
+#include <vector>
 
 namespace BearLibTerminal
 {
-	static const GLenum color_format = GL_BGRA;
+	/* Порядок составляющих цвета при загрузке в текстуру.
+	 *
+	 * В памяти пиксель лежит как BGRA (см. объявление Color). Настольный
+	 * OpenGL принимает такой порядок как есть. В OpenGL ES формата GL_BGRA
+	 * нет: если устройство даёт расширение GL_EXT_texture_format_BGRA8888 —
+	 * пользуемся им, иначе байты переставляются здесь, перед отправкой.
+	 *
+	 * Перестановка — обычный проход по растру. Делать её вычислениями на
+	 * стороне JVM нельзя: библиотека написана на C++ и ни с какой виртуальной
+	 * машиной не связана, а на настольных сборках её нет и в помине.
+	 */
+	static GLenum ColorFormat()
+	{
+		return g_has_bgra? GL_BGRA: GL_RGBA;
+	}
+
+	static GLint InternalFormat()
+	{
+		// В GLES внутренний формат для BGRA обязан совпадать с внешним,
+		// в отличие от настольного GL, где хватает GL_RGBA8.
+#if defined(__ANDROID__)
+		return g_has_bgra? (GLint)GL_BGRA: (GLint)GL_RGBA;
+#else
+		return GL_RGBA8;
+#endif
+	}
+
+	namespace
+	{
+		// Держится между вызовами, чтобы не выделять память заново на каждой
+		// загрузке: текстуры грузятся редко, но растр бывает крупным.
+		std::vector<uint8_t> g_swap_buffer;
+
+		// Возвращает указатель на данные в том порядке, который примет
+		// видеокарта. Если переставлять не нужно, отдаёт исходные данные.
+		const uint8_t* ReorderIfNeeded(const uint8_t* data, size_t pixels)
+		{
+			if (g_has_bgra)
+				return data;
+
+			g_swap_buffer.resize(pixels * 4);
+			for (size_t i = 0; i < pixels; i++)
+			{
+				g_swap_buffer[i*4 + 0] = data[i*4 + 2]; // r <- b
+				g_swap_buffer[i*4 + 1] = data[i*4 + 1]; // g
+				g_swap_buffer[i*4 + 2] = data[i*4 + 0]; // b <- r
+				g_swap_buffer[i*4 + 3] = data[i*4 + 3]; // a
+			}
+			return g_swap_buffer.data();
+		}
+	}
 
 	uint32_t Texture::m_currently_bound_handle{0};
 
@@ -118,7 +169,8 @@ namespace BearLibTerminal
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, g_texture_filter);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, g_texture_filter);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, m_size.width, m_size.height, 0, color_format, GL_UNSIGNED_BYTE, (uint8_t*)bitmap.GetData());
+			glTexImage2D(GL_TEXTURE_2D, 0, InternalFormat(), m_size.width, m_size.height, 0, ColorFormat(), GL_UNSIGNED_BYTE,
+				ReorderIfNeeded((const uint8_t*)bitmap.GetData(), (size_t)m_size.Area()));
 		}
 		else
 		{
@@ -127,13 +179,15 @@ namespace BearLibTerminal
 			if (bitmap_size == m_size)
 			{
 				// Texture may be updated in-place
-				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_size.width, m_size.height, color_format, GL_UNSIGNED_BYTE, (uint8_t*)bitmap.GetData());
+				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_size.width, m_size.height, ColorFormat(), GL_UNSIGNED_BYTE,
+					ReorderIfNeeded((const uint8_t*)bitmap.GetData(), (size_t)m_size.Area()));
 			}
 			else
 			{
 				// Texture must be reallocated with new size (done by driver)
 				m_size = bitmap_size;
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, m_size.width, m_size.height, 0, color_format, GL_UNSIGNED_BYTE, (uint8_t*)bitmap.GetData());
+				glTexImage2D(GL_TEXTURE_2D, 0, InternalFormat(), m_size.width, m_size.height, 0, ColorFormat(), GL_UNSIGNED_BYTE,
+				ReorderIfNeeded((const uint8_t*)bitmap.GetData(), (size_t)m_size.Area()));
 			}
 		}
 	}
@@ -150,7 +204,15 @@ namespace BearLibTerminal
 		uint8_t* data = (uint8_t*)&result(0, 0);
 
 		Bind();
+#if defined(__ANDROID__)
+		// glGetTexImage в OpenGL ES отсутствует вовсе. Обойти это можно
+		// через кадровый буфер и glReadPixels, но заводить такое ради
+		// вызова, которого в библиотеке нет ни одного, преждевременно.
+		(void)data;
+		LOG(Error, L"[Texture::Download] not available on this platform");
+#else
 		glGetTexImage(GL_TEXTURE_2D, 0, GL_BGRA, GL_UNSIGNED_BYTE, data);
+#endif
 
 		return result;
 	}
@@ -168,7 +230,8 @@ namespace BearLibTerminal
 		}
 
 		Bind();
-		glTexSubImage2D(GL_TEXTURE_2D, 0, area.left, area.top, area.width, area.height, color_format, GL_UNSIGNED_BYTE, (uint8_t*)bitmap.GetData());
+		glTexSubImage2D(GL_TEXTURE_2D, 0, area.left, area.top, area.width, area.height, ColorFormat(), GL_UNSIGNED_BYTE,
+			ReorderIfNeeded((const uint8_t*)bitmap.GetData(), (size_t)(area.width * area.height)));
 	}
 
 	void Texture::ApplyTextureFilter()
