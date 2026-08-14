@@ -429,6 +429,11 @@ namespace BearLibTerminal
 		return Size(rect.right-rect.left, rect.bottom-rect.top);
 	}
 
+	Size WinApiWindow::GetScreenSize()
+	{
+		return Size(GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN));
+	}
+
 	void WinApiWindow::Show()
 	{
 		if (m_handle != nullptr)

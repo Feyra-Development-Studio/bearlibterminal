@@ -65,6 +65,7 @@ namespace BearLibTerminal
 		void SetFullscreen(bool fullscreen);
 		void SetCursorVisibility(bool visible);
 		Size GetActualSize();
+		Size GetScreenSize();
 		int PumpEvents();
 	protected:
 		bool Construct();

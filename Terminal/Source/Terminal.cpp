@@ -650,6 +650,33 @@ namespace BearLibTerminal
 			m_vars[TK_CLIENT_WIDTH] = viewport_size.width;
 			m_vars[TK_CLIENT_HEIGHT] = viewport_size.height;
 
+			// A window larger than the screen used to be accepted in complete
+			// silence, and what happened next was up to the window manager --
+			// which is why the same request behaved differently on different
+			// systems. The size the application asked for is still honoured (both
+			// size and cellsize are a contract: the application will print at
+			// those coordinates, and quietly shrinking the grid would drop that
+			// content without a word), but it is no longer silent.
+			//
+			// The decision belongs to the application, and for that it needs the
+			// screen size -- see TK_SCREEN_WIDTH/TK_SCREEN_HEIGHT.
+			Size screen_size = m_window->GetScreenSize();
+			m_vars[TK_SCREEN_WIDTH] = screen_size.width;
+			m_vars[TK_SCREEN_HEIGHT] = screen_size.height;
+
+			if (screen_size.Area() > 0 && !updated.window_fullscreen &&
+			    (viewport_size.width > screen_size.width ||
+			     viewport_size.height > screen_size.height))
+			{
+				LOG(Warning, L"Window is larger than the screen: requested "
+					<< viewport_size << L" pixels ("
+					<< m_world.stage.size << L" cells of "
+					<< m_world.state.cellsize << L"), screen is "
+					<< screen_size << L". The window is created as requested; "
+					<< L"part of it will not be visible. Use TK_SCREEN_WIDTH/"
+					<< L"TK_SCREEN_HEIGHT to pick a size that fits.");
+			}
+
 			m_window->SetSizeHints(m_world.state.cellsize*scale_factor, updated.window_minimum_size);
 			m_window->SetClientSize(viewport_size);
 

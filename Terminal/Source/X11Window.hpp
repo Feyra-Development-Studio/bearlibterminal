@@ -50,6 +50,7 @@ namespace BearLibTerminal
 		int PumpEvents();
 		void SetResizeable(bool resizeable);
 		Size GetActualSize();
+		Size GetScreenSize();
 		std::wstring GetClipboard();
 		void SetFullscreen(bool fullscreen);
 		void SetCursorVisibility(bool visible);

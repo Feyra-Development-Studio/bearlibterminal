@@ -182,6 +182,8 @@
 #define TK_WCHAR            0xC9 /* Unicode codepoint of last produced character */
 #define TK_EVENT            0xCA /* Last dequeued event */
 #define TK_FULLSCREEN       0xCB /* Fullscreen state */
+#define TK_SCREEN_WIDTH     0xCC /* Screen size in pixels, 0 when unknown */
+#define TK_SCREEN_HEIGHT    0xCD
 
 /*
  * Other events

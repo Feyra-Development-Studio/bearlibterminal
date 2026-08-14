@@ -45,6 +45,12 @@ namespace BearLibTerminal
 	Window::~Window()
 	{ }
 
+	Size Window::GetScreenSize()
+	{
+		// Unknown unless a platform backend says otherwise.
+		return Size();
+	}
+
 	void Window::SetSizeHints(Size increment, Size minimum_size)
 	{
 		m_cell_size = increment;

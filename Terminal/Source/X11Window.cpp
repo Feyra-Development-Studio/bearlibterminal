@@ -699,6 +699,15 @@ namespace BearLibTerminal
 		return Size(width, height);
 	}
 
+	Size X11Window::GetScreenSize()
+	{
+		if (m_display == nullptr)
+			return Size();
+
+		int screen = DefaultScreen(m_display);
+		return Size(DisplayWidth(m_display, screen), DisplayHeight(m_display, screen));
+	}
+
 	std::wstring X11Window::GetClipboard()
 	{
 		std::wstring result;
