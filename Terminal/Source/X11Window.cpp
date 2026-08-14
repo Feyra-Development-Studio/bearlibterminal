@@ -20,7 +20,7 @@
 * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#ifdef __linux__
+#if defined(__linux__) && !defined(__ANDROID__)
 
 #include "X11Window.hpp"
 #include "OpenGL.hpp"

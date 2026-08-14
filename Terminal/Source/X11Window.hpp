@@ -23,7 +23,7 @@
 #ifndef BEARLIBTERMINAL_X11WINDOW3_HPP
 #define BEARLIBTERMINAL_X11WINDOW3_HPP
 
-#ifdef __linux__
+#if defined(__linux__) && !defined(__ANDROID__)
 
 #include <memory>
 #include "Window.hpp"

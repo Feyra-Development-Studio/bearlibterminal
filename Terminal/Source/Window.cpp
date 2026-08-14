@@ -22,7 +22,7 @@
 
 #include "Window.hpp"
 #include "AndroidWindow.hpp"
-#if defined(__linux)
+#if defined(__linux) && !defined(__ANDROID__)
 #include "X11Window.hpp"
 #endif
 #if defined(_WIN32)
@@ -73,7 +73,7 @@ namespace BearLibTerminal
 
 	std::unique_ptr<Window> Window::Create(EventHandler handler)
 	{
-#if defined(__linux)
+#if defined(__linux) && !defined(__ANDROID__)
 		return std::make_unique<X11Window>(handler);
 #endif
 #if defined(_WIN32)

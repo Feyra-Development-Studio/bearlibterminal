@@ -24,7 +24,7 @@
 
 #if defined(_WIN32)
 #include <windows.h>
-#elif defined(__linux)
+#elif defined(__linux)   // включая Android: sys/time.h и gettimeofday там есть
 #include <sys/time.h>
 #endif
 
@@ -141,7 +141,7 @@ namespace BearLibTerminal
 		QueryPerformanceCounter(&t);
 		return t.QuadPart / factor;
 	}
-#elif defined(__linux)
+#elif defined(__linux)   // включая Android: sys/time.h и gettimeofday там есть
 	uint64_t gettime()
 	{
 		timeval t;
