@@ -36,25 +36,38 @@ int main(int argc, char** argv)
 	printf("ячейка: %dx%d\n",
 		terminal_state(TK_CELL_WIDTH), terminal_state(TK_CELL_HEIGHT));
 
-	/* Заведомо больше экрана. Сетка не должна урезаться молча: размер —
-	   это обещание приложению, что по этим координатам можно печатать. */
+	/* Заведомо больше экрана: сетка должна урезаться до влезающей, а размер
+	   ячейки остаться заданным. Уменьшать ячейку — решение приложения. */
 	terminal_set("window: size=200x60");
-	printf("клеток: %dx%d\n", terminal_state(TK_WIDTH), terminal_state(TK_HEIGHT));
-
-	/* А теперь то, ради чего наружу выведен размер экрана: приложение само
-	   считает, сколько клеток влезает, и получает окно по размеру экрана. */
-	cols = terminal_state(TK_SCREEN_WIDTH) / terminal_state(TK_CELL_WIDTH);
-	rows = terminal_state(TK_SCREEN_HEIGHT) / terminal_state(TK_CELL_HEIGHT);
-	snprintf(setting, sizeof(setting), "window: size=%dx%d", cols, rows);
-	terminal_set(setting);
-
 	want_w = terminal_state(TK_WIDTH) * terminal_state(TK_CELL_WIDTH);
 	want_h = terminal_state(TK_HEIGHT) * terminal_state(TK_CELL_HEIGHT);
-	printf("подобрано: %dx%d клеток = %dx%d точек\n",
+	printf("клеток: %dx%d = %dx%d точек\n",
 		terminal_state(TK_WIDTH), terminal_state(TK_HEIGHT), want_w, want_h);
+	printf("ячейка после урезания: %dx%d\n",
+		terminal_state(TK_CELL_WIDTH), terminal_state(TK_CELL_HEIGHT));
 	printf("влезает: %s\n",
 		(want_w <= terminal_state(TK_SCREEN_WIDTH) &&
 		 want_h <= terminal_state(TK_SCREEN_HEIGHT))? "да": "нет");
+
+	/* Влезающий размер не трогаем: урезать нечего. */
+	cols = terminal_state(TK_SCREEN_WIDTH) / terminal_state(TK_CELL_WIDTH) / 2;
+	rows = terminal_state(TK_SCREEN_HEIGHT) / terminal_state(TK_CELL_HEIGHT) / 2;
+	snprintf(setting, sizeof(setting), "window: size=%dx%d", cols, rows);
+	terminal_set(setting);
+	printf("влезающее просили %dx%d, получили %dx%d\n",
+		cols, rows, terminal_state(TK_WIDTH), terminal_state(TK_HEIGHT));
+
+	/* Полноэкранный режим: там окно равно экрану по определению, и
+	   ограничение вмешиваться не должно. Ошибка наблюдалась в оконном, но
+	   проверяются оба. */
+	terminal_set("window: fullscreen=true");
+	printf("полный экран: %dx%d клеток, признак %d\n",
+		terminal_state(TK_WIDTH), terminal_state(TK_HEIGHT),
+		terminal_state(TK_FULLSCREEN));
+	terminal_set("window: fullscreen=false");
+	printf("обратно в окно: %dx%d клеток, признак %d\n",
+		terminal_state(TK_WIDTH), terminal_state(TK_HEIGHT),
+		terminal_state(TK_FULLSCREEN));
 
 	terminal_close();
 	return 0;

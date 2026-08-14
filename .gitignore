@@ -7,3 +7,4 @@ Output/
 
 # снимки проверки отрисовки: эталон лежит в tests/render, остальное — мусор
 build/render-check/
+build-win/

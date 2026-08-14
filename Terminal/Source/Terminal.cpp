@@ -625,6 +625,56 @@ namespace BearLibTerminal
 			viewport_size_changed = true;
 		}
 
+		// Clamp the grid so that the window fits the screen.
+		//
+		// A window larger than the screen is never what anyone wants: the part
+		// sticking out is simply unreachable. What used to happen instead was
+		// nothing at all -- the request went through untouched and the window
+		// manager decided the outcome, which is why the same code behaved
+		// differently on different systems.
+		//
+		// Cells are dropped, cellsize is kept. Shrinking cells instead would
+		// keep the grid intact at the price of glyphs too small to read, and
+		// that trade is the application's to make, not ours.
+		//
+		// Fullscreen is left alone: there the window is the screen by
+		// definition, and the size is decided elsewhere.
+		if (!updated.window_fullscreen && m_world.state.cellsize.Area() > 0)
+		{
+			Size screen_size = m_window? m_window->GetScreenSize(): Size();
+			if (screen_size.Area() > 0)
+			{
+				float scale_factor = kScaleSteps[m_scale_step];
+				Size cell = m_world.state.cellsize * scale_factor;
+				if (cell.width > 0 && cell.height > 0)
+				{
+					// At least one cell: a zero-sized grid is worse than a
+					// window that does not fit.
+					Size limit
+					(
+						std::max(1, screen_size.width / cell.width),
+						std::max(1, screen_size.height / cell.height)
+					);
+
+					Size clamped
+					(
+						std::min(updated.window_size.width, limit.width),
+						std::min(updated.window_size.height, limit.height)
+					);
+
+					if (clamped != updated.window_size)
+					{
+						LOG(Warning, L"Requested " << updated.window_size
+							<< L" cells would not fit the screen, using "
+							<< clamped);
+						updated.window_size = clamped;
+						updated.window_client_size = Size();
+						m_options.window_client_size = Size();
+					}
+				}
+			}
+		}
+
 		if (updated.window_size != m_options.window_size)
 		{
 			// Update window size: resize the stage
@@ -650,32 +700,16 @@ namespace BearLibTerminal
 			m_vars[TK_CLIENT_WIDTH] = viewport_size.width;
 			m_vars[TK_CLIENT_HEIGHT] = viewport_size.height;
 
-			// A window larger than the screen used to be accepted in complete
-			// silence, and what happened next was up to the window manager --
-			// which is why the same request behaved differently on different
-			// systems. The size the application asked for is still honoured (both
-			// size and cellsize are a contract: the application will print at
-			// those coordinates, and quietly shrinking the grid would drop that
-			// content without a word), but it is no longer silent.
-			//
-			// The decision belongs to the application, and for that it needs the
-			// screen size -- see TK_SCREEN_WIDTH/TK_SCREEN_HEIGHT.
 			Size screen_size = m_window->GetScreenSize();
 			m_vars[TK_SCREEN_WIDTH] = screen_size.width;
 			m_vars[TK_SCREEN_HEIGHT] = screen_size.height;
 
-			if (screen_size.Area() > 0 && !updated.window_fullscreen &&
-			    (viewport_size.width > screen_size.width ||
-			     viewport_size.height > screen_size.height))
-			{
-				LOG(Warning, L"Window is larger than the screen: requested "
-					<< viewport_size << L" pixels ("
-					<< m_world.stage.size << L" cells of "
-					<< m_world.state.cellsize << L"), screen is "
-					<< screen_size << L". The window is created as requested; "
-					<< L"part of it will not be visible. Use TK_SCREEN_WIDTH/"
-					<< L"TK_SCREEN_HEIGHT to pick a size that fits.");
-			}
+			// Window size goes to the log here and only here: at creation and
+			// whenever it actually changes. Repeating it on every settings call
+			// would bury the messages that matter.
+			LOG(Info, L"Window size is " << viewport_size << L" pixels ("
+				<< m_world.stage.size << L" cells of " << m_world.state.cellsize
+				<< L"), screen is " << screen_size);
 
 			m_window->SetSizeHints(m_world.state.cellsize*scale_factor, updated.window_minimum_size);
 			m_window->SetClientSize(viewport_size);
