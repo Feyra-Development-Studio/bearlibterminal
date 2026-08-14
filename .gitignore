@@ -1,0 +1,9 @@
+# сборка
+build/
+Output/
+*.o
+*.a
+*.so
+
+# снимки проверки отрисовки: эталон лежит в tests/render, остальное — мусор
+build/render-check/
