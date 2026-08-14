@@ -63,13 +63,13 @@ namespace BearLibTerminal
 		m_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
 		if (m_display == EGL_NO_DISPLAY)
 		{
-			LOG(Fatal, "EGL: no display");
+			LOG(Fatal, L"EGL: no display");
 			return false;
 		}
 
 		if (!eglInitialize(m_display, nullptr, nullptr))
 		{
-			LOG(Fatal, "EGL: initialization failed");
+			LOG(Fatal, L"EGL: initialization failed");
 			return false;
 		}
 
@@ -90,7 +90,7 @@ namespace BearLibTerminal
 		EGLint config_count = 0;
 		if (!eglChooseConfig(m_display, config_attributes, &config, 1, &config_count) || config_count < 1)
 		{
-			LOG(Fatal, "EGL: no suitable configuration for GLES3");
+			LOG(Fatal, L"EGL: no suitable configuration for GLES3");
 			return false;
 		}
 
@@ -103,7 +103,7 @@ namespace BearLibTerminal
 		m_surface = eglCreateWindowSurface(m_display, config, m_native_window, nullptr);
 		if (m_surface == EGL_NO_SURFACE)
 		{
-			LOG(Fatal, "EGL: window surface was not created");
+			LOG(Fatal, L"EGL: window surface was not created");
 			return false;
 		}
 
@@ -111,13 +111,13 @@ namespace BearLibTerminal
 		m_context = eglCreateContext(m_display, config, EGL_NO_CONTEXT, context_attributes);
 		if (m_context == EGL_NO_CONTEXT)
 		{
-			LOG(Fatal, "EGL: context was not created");
+			LOG(Fatal, L"EGL: context was not created");
 			return false;
 		}
 
 		if (!eglMakeCurrent(m_display, m_surface, m_surface, m_context))
 		{
-			LOG(Fatal, "EGL: context was not made current");
+			LOG(Fatal, L"EGL: context was not made current");
 			return false;
 		}
 
@@ -125,7 +125,7 @@ namespace BearLibTerminal
 		eglQuerySurface(m_display, m_surface, EGL_WIDTH, &width);
 		eglQuerySurface(m_display, m_surface, EGL_HEIGHT, &height);
 		m_size = Size(width, height);
-		LOG(Info, "EGL: surface is " << m_size << " pixels");
+		LOG(Info, L"EGL: surface is " << m_size << L" pixels");
 
 		ProbeOpenGL();
 		return true;
