@@ -27,6 +27,7 @@
 #include "Palette.hpp"
 #include "Config.hpp"
 #include "Log.hpp"
+#include "Encoding.hpp"
 #include <map>
 #include <memory>
 #include <string>
@@ -183,6 +184,79 @@ void terminal_composition(int mode)
 {
 	if (!g_instance) return;
 	g_instance->SetComposition(mode);
+}
+
+/*
+ * Application-side logging.
+ *
+ * The library had an internal log since forever but no way for the
+ * application to write into it. On Android that is not an inconvenience but a
+ * dead end: there is no visible stderr, so an application that silently fails
+ * to draw gives no clue at all.
+ *
+ * Messages go through the very same Log instance the library uses, so a single
+ * "log: level=..." setting filters both. The source is marked with a prefix:
+ * without it, a log where library and application lines are mixed is useless
+ * for telling who said what.
+ *
+ * Note this deliberately works before terminal_open() and after
+ * terminal_close(): reporting a failure to open the terminal is exactly when
+ * logging matters most.
+ */
+namespace
+{
+	BearLibTerminal::Log::Level ParseLogLevel(int level)
+	{
+		using BearLibTerminal::Log;
+		switch (level)
+		{
+		case TK_LOG_FATAL:   return Log::Level::Fatal;
+		case TK_LOG_ERROR:   return Log::Level::Error;
+		case TK_LOG_WARNING: return Log::Level::Warning;
+		case TK_LOG_DEBUG:   return Log::Level::Debug;
+		case TK_LOG_TRACE:   return Log::Level::Trace;
+		default:             return Log::Level::Info;
+		}
+	}
+
+	void WriteApplicationLog(int level, std::wstring message)
+	{
+		auto parsed = ParseLogLevel(level);
+		if (parsed > BearLibTerminal::Log::Instance().level)
+			return;
+		BearLibTerminal::Log::Instance().Write(parsed, L"[app] " + message);
+	}
+}
+
+void terminal_log8(int level, const int8_t* message)
+{
+	if (message == nullptr)
+		return;
+
+	/* Before terminal_open() there is no instance and thus no configured
+	   encoding; UTF-8 is the sane assumption and matches what the library
+	   itself writes. */
+	std::wstring text = g_instance?
+		g_instance->GetEncoding().Convert((const char*)message):
+		BearLibTerminal::UTF8Encoding().Convert((const char*)message);
+
+	WriteApplicationLog(level, std::move(text));
+}
+
+void terminal_log16(int level, const int16_t* message)
+{
+	if (message == nullptr)
+		return;
+
+	WriteApplicationLog(level, BearLibTerminal::UCS2Encoding().Convert((const char16_t*)message));
+}
+
+void terminal_log32(int level, const int32_t* message)
+{
+	if (message == nullptr)
+		return;
+
+	WriteApplicationLog(level, BearLibTerminal::UCS4Encoding().Convert((const char32_t*)message));
 }
 
 void terminal_font8(const int8_t* name)

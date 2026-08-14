@@ -21,6 +21,10 @@
 */
 
 #include "Log.hpp"
+
+#if defined(__ANDROID__)
+#include <android/log.h>
+#endif
 #include "Encoding.hpp"
 #include "Utility.hpp"
 #include "Platform.hpp"
@@ -78,13 +82,44 @@ namespace BearLibTerminal
 		GetEnvironmentVariable(L"BEARLIB_LOGFILE", filename);
 		try_parse(GetEnvironmentVariable(L"BEARLIB_LOGLEVEL"), level);
 		try_parse(GetEnvironmentVariable(L"BEARLIB_LOGMODE"), mode);
-		m_truncated = false;
+
+		// NOTE: m_truncated is deliberately NOT reset here.
+		//
+		// Reset() is called from terminal_close(). Clearing the flag means the
+		// next write in the same process truncates the file again -- wiping
+		// everything logged during the session. That is exactly backwards: the
+		// message written after a session ends is usually the one explaining
+		// why it ended, and it used to destroy the evidence it came with.
+		//
+		// Truncate mode still means "truncate once per process", which is what
+		// it meant during the session anyway.
 	}
 
 	void Log::Write(Level level, const std::wstring& what)
 	{
 		std::wostringstream ss;
 		ss << FormatTime().c_str() << " [" << level << "] " << what << std::endl;
+
+#if defined(__ANDROID__)
+		// On Android stderr goes nowhere a user can reach and the log file lives
+		// inside application-private storage, so logcat is the only channel that
+		// is actually readable while the device is in hand. Everything is
+		// duplicated there regardless of whether a log file is configured.
+		{
+			int priority = ANDROID_LOG_INFO;
+			switch (level)
+			{
+			case Level::Fatal:   priority = ANDROID_LOG_FATAL; break;
+			case Level::Error:   priority = ANDROID_LOG_ERROR; break;
+			case Level::Warning: priority = ANDROID_LOG_WARN; break;
+			case Level::Debug:   priority = ANDROID_LOG_DEBUG; break;
+			case Level::Trace:   priority = ANDROID_LOG_VERBOSE; break;
+			default:             priority = ANDROID_LOG_INFO; break;
+			}
+			__android_log_print(priority, "BearLibTerminal", "%s",
+				UTF8Encoding().Convert(what).c_str());
+		}
+#endif
 
 		if (filename.empty() || level <= Level::Error)
 		{

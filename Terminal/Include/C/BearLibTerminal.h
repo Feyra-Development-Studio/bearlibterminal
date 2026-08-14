@@ -214,6 +214,18 @@
 #define TK_ALIGN_MIDDLE       12
 
 /*
+ * Log levels for terminal_log. Same levels the library itself uses, so that
+ * application messages and library messages can be filtered together via
+ * the "log: level=..." option.
+ */
+#define TK_LOG_FATAL           0
+#define TK_LOG_ERROR           1
+#define TK_LOG_WARNING         2
+#define TK_LOG_INFO            3
+#define TK_LOG_DEBUG           4
+#define TK_LOG_TRACE           5
+
+/*
  * Terminal uses unsigned 32-bit value for color representation in ARGB order (0xAARRGGBB), e. g.
  * a) solid red is 0xFFFF0000
  * b) half-transparent green is 0x8000FF00
@@ -260,6 +272,9 @@ TERMINAL_API void terminal_layer(int index);
 TERMINAL_API void terminal_color(color_t color);
 TERMINAL_API void terminal_bkcolor(color_t color);
 TERMINAL_API void terminal_composition(int mode);
+TERMINAL_API void terminal_log8(int level, const int8_t* message);
+TERMINAL_API void terminal_log16(int level, const int16_t* message);
+TERMINAL_API void terminal_log32(int level, const int32_t* message);
 TERMINAL_API void terminal_font8(const int8_t* name);
 TERMINAL_API void terminal_font16(const int16_t* name);
 TERMINAL_API void terminal_font32(const int32_t* name);
@@ -450,9 +465,19 @@ TERMINAL_INLINE void terminal_font(const char* name)
 	terminal_font8((const int8_t*)name);
 }
 
+TERMINAL_INLINE void terminal_log(int level, const char* message)
+{
+	terminal_log8(level, (const int8_t*)message);
+}
+
 TERMINAL_INLINE void terminal_wfont(const wchar_t* name)
 {
 	TERMINAL_CAT(terminal_font, TERMINAL_WCHAR_SUFFIX)((const TERMINAL_WCHAR_TYPE*)name);
+}
+
+TERMINAL_INLINE void terminal_wlog(int level, const wchar_t* message)
+{
+	TERMINAL_CAT(terminal_log, TERMINAL_WCHAR_SUFFIX)(level, (const TERMINAL_WCHAR_TYPE*)message);
 }
 
 TERMINAL_INLINE dimensions_t terminal_print(int x, int y, const char* s)
@@ -619,6 +644,11 @@ TERMINAL_INLINE void terminal_bkcolor(const wchar_t* name)
 TERMINAL_INLINE void terminal_font(const wchar_t* name)
 {
 	terminal_wfont(name);
+}
+
+TERMINAL_INLINE void terminal_log(int level, const wchar_t* message)
+{
+	terminal_wlog(level, message);
 }
 
 TERMINAL_INLINE void terminal_put_ext(int x, int y, int dx, int dy, int code)

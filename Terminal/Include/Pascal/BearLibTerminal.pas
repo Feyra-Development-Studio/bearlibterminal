@@ -182,6 +182,15 @@ const
   TK_ALIGN_BOTTOM     =   8;
   TK_ALIGN_MIDDLE     =  12;
 
+    // Уровни для terminal_log — те же, что у самой библиотеки, чтобы
+    // сообщения игры и библиотеки фильтровались одной настройкой log: level=
+    TK_LOG_FATAL           = 0;
+    TK_LOG_ERROR           = 1;
+    TK_LOG_WARNING         = 2;
+    TK_LOG_INFO            = 3;
+    TK_LOG_DEBUG           = 4;
+    TK_LOG_TRACE           = 5;
+
 // ----------------------------------------------------------------------------
 // Module interface
 // ----------------------------------------------------------------------------
@@ -249,6 +258,11 @@ procedure terminal_composition(Mode: Int32);
 // Layer
 procedure terminal_layer(Mode: Int32);
   cdecl; external 'BearLibTerminal' name 'terminal_layer';
+
+// Log
+procedure terminal_log(Level: Int32; const Message: AnsiString); overload;
+
+procedure terminal_log(Level: Int32; const Message: WideString); overload;
 
 // Font
 procedure terminal_font(const Name: AnsiString); overload;
@@ -395,6 +409,22 @@ end;
 procedure terminal_bkcolor(Color: WideString); overload;
 begin
     terminal_bkcolor(color_from_name(Color));
+end;
+
+procedure terminal_log_ansi(Level: Int32; const Message: PAnsiChar);
+  cdecl; external 'BearLibTerminal' name 'terminal_log8';
+
+procedure terminal_log_unicode(Level: Int32; const Message: PWideChar);
+  cdecl; external 'BearLibTerminal' name 'terminal_log16';
+
+procedure terminal_log(Level: Int32; const Message: AnsiString); overload;
+begin
+	terminal_log_ansi(Level, PAnsiChar(Message));
+end;
+
+procedure terminal_log(Level: Int32; const Message: WideString); overload;
+begin
+	terminal_log_unicode(Level, PWideChar(Message));
 end;
 
 procedure terminal_font_ansi(const Name: PAnsiChar);
