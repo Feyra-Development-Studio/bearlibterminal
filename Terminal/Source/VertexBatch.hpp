@@ -52,6 +52,18 @@ namespace BearLibTerminal
 	public:
 		VertexBatch();
 
+		// Set once per frame from the same numbers glOrtho used to get.
+		void SetProjection(float left, float right, float bottom, float top);
+
+		// Replaces glEnable/glDisable(GL_TEXTURE_2D): with shaders there is no
+		// such state, the choice lives in the fragment shader.
+		void SetTextured(bool textured);
+
+		// Called after the GL context exists. Returns false when shaders are
+		// unavailable, and then nothing will draw -- better to say so loudly
+		// than to show a black window.
+		bool Initialize();
+
 		// Mode is GL_QUADS or GL_LINES, matching what the call sites used.
 		void Begin(GLenum mode);
 		// Two overloads mirroring glColor4ub and glColor4f. Integer literals
@@ -65,6 +77,18 @@ namespace BearLibTerminal
 
 	private:
 		void Flush();
+		bool BuildProgram();
+
+		GLuint m_program;
+		GLuint m_buffer;
+		GLint m_attrib_position;
+		GLint m_attrib_color;
+		GLint m_attrib_texcoord;
+		GLint m_uniform_projection;
+		GLint m_uniform_textured;
+		float m_projection[16];
+		bool m_textured;
+		bool m_ready;
 
 		GLenum m_mode;
 		bool m_started;

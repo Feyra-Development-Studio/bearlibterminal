@@ -22,6 +22,7 @@
 
 #include <stdexcept>
 #include "Texture.hpp"
+#include "VertexBatch.hpp"
 #include "OpenGL.hpp"
 #include "Log.hpp"
 
@@ -192,12 +193,14 @@ namespace BearLibTerminal
 
 	void Texture::Enable()
 	{
-		glEnable(GL_TEXTURE_2D);
+		// With shaders there is no GL_TEXTURE_2D state to switch: whether the
+		// sampler is used is decided in the fragment shader.
+		g_batch.SetTextured(true);
 	}
 
 	void Texture::Disable()
 	{
-		glDisable(GL_TEXTURE_2D);
+		g_batch.SetTextured(false);
 	}
 
 	void Texture::Unbind()

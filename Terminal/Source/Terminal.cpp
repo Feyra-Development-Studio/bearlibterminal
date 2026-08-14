@@ -2006,20 +2006,15 @@ namespace BearLibTerminal
 		glDisable(GL_DEPTH_TEST);
 		glClearColor(0, 0, 0, 1);
 		glViewport(0, 0, viewport_size.width, viewport_size.height);
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glOrtho
+		// The same projection glOrtho used to build, now handed to the shader.
+		g_batch.SetProjection
 		(
 			-m_stage_area.left * m_stage_area_factor.width,
 			(viewport_size.width - m_stage_area.left) * m_stage_area_factor.width,
 			(viewport_size.height - m_stage_area.top) * m_stage_area_factor.height,
-			-m_stage_area.top * m_stage_area_factor.height,
-			-1,
-			+1
+			-m_stage_area.top * m_stage_area_factor.height
 		);
 
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -2298,7 +2293,7 @@ namespace BearLibTerminal
 			int width = m_world.stage.size.width * m_world.state.cellsize.width;
 			int height = m_world.stage.size.height * m_world.state.cellsize.height;
 			g_batch.Color(1.0f, 1.0f, 1.0f, 0.5f);
-			glDisable(GL_TEXTURE_2D);
+			g_batch.SetTextured(false);
 			glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
 			g_batch.Begin(GL_LINES);
 			for (int i=0; i<=m_world.stage.size.width; i++)
@@ -2317,7 +2312,7 @@ namespace BearLibTerminal
 			}
 			g_batch.End();
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			glEnable(GL_TEXTURE_2D);
+			g_batch.SetTextured(true);
 		}
 
 		return 1;

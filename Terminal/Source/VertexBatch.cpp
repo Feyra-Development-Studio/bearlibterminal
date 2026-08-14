@@ -21,8 +21,10 @@
 */
 
 #include "VertexBatch.hpp"
+#include "Log.hpp"
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 namespace BearLibTerminal
 {
@@ -43,11 +45,84 @@ namespace BearLibTerminal
 		}
 	}
 
+	namespace
+	{
+		/* Shaders are written to the ES 1.00 profile: "attribute", "varying",
+		 * gl_FragColor. That single source compiles on desktop GL 2.1 and up
+		 * and on GLES 2 and 3 alike -- an ES3 context accepts ES2 shaders.
+		 * Where ES3 features actually pay off (instancing a grid of glyphs)
+		 * they can be added later; writing two dialects now would buy nothing
+		 * and double what has to be kept in step. */
+		const char* kVertexShader =
+			"attribute vec2 a_position;\n"
+			"attribute vec4 a_color;\n"
+			"attribute vec2 a_texcoord;\n"
+			"uniform mat4 u_projection;\n"
+			"varying vec4 v_color;\n"
+			"varying vec2 v_texcoord;\n"
+			"void main()\n"
+			"{\n"
+			"    v_color = a_color;\n"
+			"    v_texcoord = a_texcoord;\n"
+			"    gl_Position = u_projection * vec4(a_position, 0.0, 1.0);\n"
+			"}\n";
+
+		const char* kFragmentShader =
+			"#ifdef GL_ES\n"
+			"precision mediump float;\n"
+			"#endif\n"
+			"uniform sampler2D u_texture;\n"
+			"uniform int u_textured;\n"
+			"varying vec4 v_color;\n"
+			"varying vec2 v_texcoord;\n"
+			"void main()\n"
+			"{\n"
+			"    if (u_textured != 0)\n"
+			"        gl_FragColor = texture2D(u_texture, v_texcoord) * v_color;\n"
+			"    else\n"
+			"        gl_FragColor = v_color;\n"
+			"}\n";
+
+		GLuint CompileShader(GLenum type, const char* source)
+		{
+			GLuint shader = bltCreateShader(type);
+			bltShaderSource(shader, 1, &source, nullptr);
+			bltCompileShader(shader);
+
+			GLint status = 0;
+			bltGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+			if (!status)
+			{
+				GLint length = 0;
+				bltGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
+				std::vector<char> log(length > 1? length: 1, 0);
+				bltGetShaderInfoLog(shader, (GLsizei)log.size(), nullptr, log.data());
+				LOG(Error, "OpenGL: shader did not compile: " << log.data());
+				bltDeleteShader(shader);
+				return 0;
+			}
+
+			return shader;
+		}
+	}
+
 	VertexBatch::VertexBatch():
 		m_mode(GL_QUADS),
 		m_started(false),
-		m_quad_index(0)
+		m_quad_index(0),
+		m_program(0),
+		m_buffer(0),
+		m_attrib_position(-1),
+		m_attrib_color(-1),
+		m_attrib_texcoord(-1),
+		m_uniform_projection(-1),
+		m_uniform_textured(-1),
+		m_textured(false),
+		m_ready(false)
 	{
+		for (int i = 0; i < 16; i++)
+			m_projection[i] = (i % 5 == 0)? 1.0f: 0.0f;
+
 		m_color[0] = m_color[1] = m_color[2] = m_color[3] = 255;
 		m_texcoord[0] = m_texcoord[1] = 0.0f;
 	}
@@ -122,6 +197,93 @@ namespace BearLibTerminal
 		m_quad_index = 0;
 	}
 
+	bool VertexBatch::Initialize()
+	{
+		if (m_ready)
+			return true;
+
+		if (!LoadOpenGLEntryPoints())
+		{
+			LOG(Fatal, "OpenGL: shaders are not available, nothing can be drawn");
+			return false;
+		}
+
+		if (!BuildProgram())
+			return false;
+
+		bltGenBuffers(1, &m_buffer);
+		m_ready = true;
+		return true;
+	}
+
+	bool VertexBatch::BuildProgram()
+	{
+		GLuint vertex = CompileShader(GL_VERTEX_SHADER, kVertexShader);
+		if (!vertex)
+			return false;
+
+		GLuint fragment = CompileShader(GL_FRAGMENT_SHADER, kFragmentShader);
+		if (!fragment)
+		{
+			bltDeleteShader(vertex);
+			return false;
+		}
+
+		m_program = bltCreateProgram();
+		bltAttachShader(m_program, vertex);
+		bltAttachShader(m_program, fragment);
+		bltLinkProgram(m_program);
+
+		GLint status = 0;
+		bltGetProgramiv(m_program, GL_LINK_STATUS, &status);
+		if (!status)
+		{
+			GLint length = 0;
+			bltGetProgramiv(m_program, GL_INFO_LOG_LENGTH, &length);
+			std::vector<char> log(length > 1? length: 1, 0);
+			bltGetProgramInfoLog(m_program, (GLsizei)log.size(), nullptr, log.data());
+			LOG(Error, "OpenGL: program did not link: " << log.data());
+			m_program = 0;
+			return false;
+		}
+
+		// Shaders are kept by the program once linked.
+		bltDeleteShader(vertex);
+		bltDeleteShader(fragment);
+
+		m_attrib_position = bltGetAttribLocation(m_program, "a_position");
+		m_attrib_color = bltGetAttribLocation(m_program, "a_color");
+		m_attrib_texcoord = bltGetAttribLocation(m_program, "a_texcoord");
+		m_uniform_projection = bltGetUniformLocation(m_program, "u_projection");
+		m_uniform_textured = bltGetUniformLocation(m_program, "u_textured");
+
+		bltUseProgram(m_program);
+		bltUniform1i(bltGetUniformLocation(m_program, "u_texture"), 0);
+
+		return true;
+	}
+
+	void VertexBatch::SetProjection(float left, float right, float bottom, float top)
+	{
+		// The very matrix glOrtho used to build, with near/far at -1 and +1.
+		float* m = m_projection;
+		std::fill(m, m + 16, 0.0f);
+		m[0]  = 2.0f / (right - left);
+		m[5]  = 2.0f / (top - bottom);
+		m[10] = -1.0f;
+		m[12] = -(right + left) / (right - left);
+		m[13] = -(top + bottom) / (top - bottom);
+		m[15] = 1.0f;
+	}
+
+	void VertexBatch::SetTextured(bool textured)
+	{
+		// Geometry already collected was meant for the previous state.
+		if (textured != m_textured)
+			Flush();
+		m_textured = textured;
+	}
+
 	void VertexBatch::End()
 	{
 		Flush();
@@ -137,20 +299,59 @@ namespace BearLibTerminal
 		if (m_positions.empty())
 			return;
 
-		glEnableClientState(GL_VERTEX_ARRAY);
-		glEnableClientState(GL_COLOR_ARRAY);
-		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+		if (!m_ready)
+			return;
 
-		glVertexPointer(2, GL_FLOAT, 0, m_positions.data());
-		glColorPointer(4, GL_UNSIGNED_BYTE, 0, m_colors.data());
-		glTexCoordPointer(2, GL_FLOAT, 0, m_texcoords.data());
+		GLsizei count = (GLsizei)(m_positions.size() / 2);
 
-		glDrawArrays(m_mode == GL_LINES? GL_LINES: GL_TRIANGLES,
-			0, (GLsizei)(m_positions.size() / 2));
+		// One buffer, refilled every flush. Interleaving the three attributes
+		// would save two uploads, but it would also mix the assembly of the
+		// geometry with its layout in memory, and that is the kind of change
+		// worth making after the port works, not during it.
+		size_t bytes_positions = m_positions.size() * sizeof(float);
+		size_t bytes_colors = m_colors.size();
+		size_t bytes_texcoords = m_texcoords.size() * sizeof(float);
 
-		glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-		glDisableClientState(GL_COLOR_ARRAY);
-		glDisableClientState(GL_VERTEX_ARRAY);
+		bltBindBuffer(GL_ARRAY_BUFFER, m_buffer);
+		bltBufferData(GL_ARRAY_BUFFER,
+			(GLsizeiptr)(bytes_positions + bytes_colors + bytes_texcoords),
+			nullptr, GL_STREAM_DRAW);
+
+		{
+			// Sub-uploads would need glBufferSubData; filling a staging vector
+			// keeps the entry point list shorter, and this runs once per batch,
+			// not once per glyph.
+			std::vector<uint8_t> staging;
+			staging.reserve(bytes_positions + bytes_colors + bytes_texcoords);
+			const uint8_t* p = (const uint8_t*)m_positions.data();
+			staging.insert(staging.end(), p, p + bytes_positions);
+			staging.insert(staging.end(), m_colors.begin(), m_colors.end());
+			const uint8_t* t = (const uint8_t*)m_texcoords.data();
+			staging.insert(staging.end(), t, t + bytes_texcoords);
+			bltBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)staging.size(),
+				staging.data(), GL_STREAM_DRAW);
+		}
+
+		bltUseProgram(m_program);
+		bltUniformMatrix4fv(m_uniform_projection, 1, GL_FALSE, m_projection);
+		bltUniform1i(m_uniform_textured, m_textured? 1: 0);
+
+		bltEnableVertexAttribArray((GLuint)m_attrib_position);
+		bltVertexAttribPointer((GLuint)m_attrib_position, 2, GL_FLOAT, GL_FALSE, 0,
+			(const void*)0);
+		bltEnableVertexAttribArray((GLuint)m_attrib_color);
+		bltVertexAttribPointer((GLuint)m_attrib_color, 4, GL_UNSIGNED_BYTE, GL_TRUE, 0,
+			(const void*)bytes_positions);
+		bltEnableVertexAttribArray((GLuint)m_attrib_texcoord);
+		bltVertexAttribPointer((GLuint)m_attrib_texcoord, 2, GL_FLOAT, GL_FALSE, 0,
+			(const void*)(bytes_positions + bytes_colors));
+
+		glDrawArrays(m_mode == GL_LINES? GL_LINES: GL_TRIANGLES, 0, count);
+
+		bltDisableVertexAttribArray((GLuint)m_attrib_texcoord);
+		bltDisableVertexAttribArray((GLuint)m_attrib_color);
+		bltDisableVertexAttribArray((GLuint)m_attrib_position);
+		bltBindBuffer(GL_ARRAY_BUFFER, 0);
 
 		// Keep the capacity: the same amount of geometry arrives every frame,
 		// and reallocating it sixty times a second would be pointless.
