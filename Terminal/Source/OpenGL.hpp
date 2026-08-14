@@ -32,6 +32,16 @@
 #undef LoadBitmap // There is a function with same name in WinAPI
 // OpenGL 1.2+
 #define GL_BGRA 0x80E1
+#elif defined(__ANDROID__)
+// Android — не Linux в этом месте, хотя __linux там тоже определён: никакого
+// GL/gl.h в NDK нет, есть GLES. Проверка на Android обязана стоять раньше.
+#include <GLES3/gl3.h>
+#include <GLES2/gl2ext.h>
+// Четырёхугольников в GLES нет вовсе; значение нужно лишь как признак режима
+// внутри VertexBatch, который всё равно рисует треугольниками.
+#ifndef GL_QUADS
+#define GL_QUADS 0x0007
+#endif
 #elif defined(__linux)
 #include <GL/gl.h>
 #elif defined(__APPLE__)
@@ -123,8 +133,6 @@ namespace BearLibTerminal
 }
 
 #else
-
-#include <GLES3/gl3.h>
 
 #define bltCreateShader glCreateShader
 #define bltShaderSource glShaderSource
