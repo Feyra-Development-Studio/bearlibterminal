@@ -1064,6 +1064,22 @@ namespace BearLibTerminal
 #if defined(DEBUG_TIMING)
 	void Terminal::Refresh()
 	{
+		/* Размер экрана обновляется здесь, а не только при смене настроек.
+		
+		   На настольных платформах экран известен ещё до открытия окна, и
+		   разницы нет. На Android поверхность выдаёт система, когда сочтёт
+		   нужным, и до неё размер попросту неизвестен — а приложению он нужен,
+		   чтобы посчитать сетку. Если обновлять его только в SetOptions,
+		   получается замкнутый круг: чтобы узнать экран, надо позвать
+		   настройки, а чтобы позвать настройки со здравым размером, надо знать
+		   экран. Именно в него приложение и упёрлось на первом прогоне. */
+		if (m_window)
+		{
+			Size screen_size = m_window->GetScreenSize();
+			m_vars[TK_SCREEN_WIDTH] = screen_size.width;
+			m_vars[TK_SCREEN_HEIGHT] = screen_size.height;
+		}
+
 		static uint64_t time_scene_prev = gettime();
 		uint64_t time_scene_now = gettime();
 		uint64_t scene_full = time_scene_now - time_scene_prev;
