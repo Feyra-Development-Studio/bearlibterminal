@@ -305,7 +305,27 @@ TERMINAL_API void terminal_set_asset_manager(void* manager);
 #define TK_ANDROID_POINTER_MOVE 2
 
 TERMINAL_API void terminal_android_surface(void* native_window);
-TERMINAL_API void terminal_android_pointer(int action, int x, int y);
+/*
+ * is_touch различает палец и мышь. События наружу одни и те же, различается
+ * лишь миг, когда они посылаются.
+ *
+ * У мыши нажатие означает нажатие: ему предшествует движение, и
+ * протаскивание с зажатой кнопкой — обычное дело.
+ *
+ * Касание — начало жеста, и чем он окажется, известно только когда палец
+ * оторвали: щелчком, протаскиванием или удержанием для прокрутки. Поэтому
+ * щелчок посылается при отпускании и только если палец не ушёл дальше
+ * порога; иначе не посылается вовсе.
+ */
+TERMINAL_API void terminal_android_pointer(int action, int x, int y, int is_touch);
+
+/*
+ * Порог, дальше которого движение пальца перестаёт быть щелчком, в точках.
+ * Зависит от плотности экрана, о которой библиотека не знает, — приложение
+ * берёт его из ViewConfiguration.getScaledTouchSlop(). Без вызова действует
+ * значение по умолчанию.
+ */
+TERMINAL_API void terminal_android_touch_slop(int pixels);
 TERMINAL_API void terminal_android_key(int code, int pressed, int unicode);
 #endif
 

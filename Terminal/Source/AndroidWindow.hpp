@@ -83,8 +83,20 @@ namespace BearLibTerminal
 		   теми же TK_MOUSE_*, и разбирается тем же кодом игры. Отдельного
 		   способа ввода для Android не заводится — иначе игре пришлось бы
 		   знать, на чём её запустили. */
-		void HandlePointer(int action, int x, int y);
+		/* is_touch различает палец и мышь.
+
+		   Наружу они дают одни и те же события, но посылаются те в разное
+		   время. У мыши нажатие означает нажатие: ему всегда предшествует
+		   движение, и протаскивание с зажатой кнопкой — обычное дело.
+		   Касание — это начало жеста, и чем он окажется, известно только
+		   когда палец оторвали. */
+		void HandlePointer(int action, int x, int y, bool is_touch);
 		void HandleKey(int keycode, bool pressed, int unicode);
+
+		// Порог, дальше которого движение пальца перестаёт быть щелчком.
+		// Задаётся приложением: он зависит от плотности точек экрана, о
+		// которой библиотека не знает, а Java знает.
+		void SetTouchSlop(int pixels);
 
 		// Значения action — те же, что у AMotionEvent, чтобы деятельности
 		// приложения не приходилось их переводить.
@@ -93,12 +105,18 @@ namespace BearLibTerminal
 		static const int kPointerMove = 2;
 
 	private:
+		void EmitClick(bool pressed, int x, int y);
 		bool CreateContext();
 		void DestroyContext();
 
 		ANativeWindow* m_native_window;
 		uint64_t m_last_pointer_press;
 		int m_consecutive_clicks;
+		bool m_touch_active;
+		bool m_touch_dragged;
+		int m_touch_start_x;
+		int m_touch_start_y;
+		int m_touch_slop;
 		EGLDisplay m_display;
 		EGLSurface m_surface;
 		EGLContext m_context;

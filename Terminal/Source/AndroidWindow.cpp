@@ -42,7 +42,15 @@ namespace BearLibTerminal
 		m_surface(EGL_NO_SURFACE),
 		m_context(EGL_NO_CONTEXT),
 		m_last_pointer_press(0),
-		m_consecutive_clicks(0)
+		m_consecutive_clicks(0),
+		m_touch_active(false),
+		m_touch_dragged(false),
+		m_touch_start_x(0),
+		m_touch_start_y(0),
+		// Значение по умолчанию на случай, если приложение промолчало: восемь
+		// точек независимой плотности на обычном экране. Настоящее значение
+		// приходит из ViewConfiguration.getScaledTouchSlop().
+		m_touch_slop(24)
 	{ }
 
 	AndroidWindow::~AndroidWindow()
@@ -200,27 +208,83 @@ namespace BearLibTerminal
 		return m_size;
 	}
 
-	void AndroidWindow::HandlePointer(int action, int x, int y)
+	void AndroidWindow::SetTouchSlop(int pixels)
+	{
+		if (pixels > 0)
+			m_touch_slop = pixels;
+	}
+
+	void AndroidWindow::HandlePointer(int action, int x, int y, bool is_touch)
 	{
 		// Положение сообщается всегда, включая нажатие: на сенсорном экране
-		// указателя нет, и до касания библиотека не знает, где палец. Если
-		// послать только нажатие, клетка окажется прежней — то есть игрок
-		// пойдёт не туда, куда ткнул.
+		// указателя нет, и до касания библиотека не знает, где палец. Послать
+		// только нажатие значит оставить клетку прежней — игрок пойдёт не
+		// туда, куда ткнул.
 		Event move(TK_MOUSE_MOVE);
 		move[TK_MOUSE_PIXEL_X] = x;
 		move[TK_MOUSE_PIXEL_Y] = y;
 		m_event_handler(std::move(move));
 
-		if (action == kPointerMove)
+		if (!is_touch)
+		{
+			// Мышь: нажатие означает нажатие, задерживать нечего.
+			if (action != kPointerMove)
+				EmitClick(action == kPointerDown, x, y);
 			return;
+		}
 
-		bool pressed = (action == kPointerDown);
+		/* Палец. Касание — это ещё не щелчок, а начало жеста: им может
+		   оказаться и щелчок по клетке, и протаскивание, и удержание для
+		   прокрутки. Что это было, известно только когда палец оторвали,
+		   поэтому нажатие откладывается до отпускания.
+		
+		   Иначе игра сработает в тот миг, когда игрок только начал вести
+		   пальцем, и уведёт героя туда, куда он не тыкал. */
+		if (action == kPointerDown)
+		{
+			m_touch_active = true;
+			m_touch_dragged = false;
+			m_touch_start_x = x;
+			m_touch_start_y = y;
+			return;
+		}
 
+		if (action == kPointerMove)
+		{
+			if (m_touch_active && !m_touch_dragged)
+			{
+				int dx = x - m_touch_start_x;
+				int dy = y - m_touch_start_y;
+				if (dx*dx + dy*dy > m_touch_slop * m_touch_slop)
+					m_touch_dragged = true;
+			}
+			return;
+		}
+
+		// Отпустили.
+		bool was_click = m_touch_active && !m_touch_dragged;
+		m_touch_active = false;
+
+		if (!was_click)
+		{
+			// Палец уехал: это было протаскивание, и щелчка не было вовсе.
+			// Движения игра уже получила и может распорядиться ими сама.
+			return;
+		}
+
+		// Щелчок целиком, по последнему положению пальца: игра ждёт пару
+		// нажатие-отпускание, ровно как от мыши.
+		EmitClick(true, x, y);
+		EmitClick(false, x, y);
+	}
+
+	void AndroidWindow::EmitClick(bool pressed, int x, int y)
+	{
 		if (pressed)
 		{
-			// Счёт подряд идущих нажатий — как на настольных платформах,
-			// с тем же порогом в четверть секунды, чтобы двойное касание и
-			// двойной щелчок означали для игры одно и то же.
+			// Счёт подряд идущих нажатий — с тем же порогом в четверть
+			// секунды, что и на настольных платформах, чтобы двойное касание
+			// и двойной щелчок означали для игры одно и то же.
 			uint64_t now = gettime();
 			uint64_t delta = now - m_last_pointer_press;
 			m_last_pointer_press = now;
@@ -230,6 +294,8 @@ namespace BearLibTerminal
 		Event event(TK_MOUSE_LEFT | (pressed? 0: TK_KEY_RELEASED));
 		event[TK_MOUSE_LEFT] = pressed? 1: 0;
 		event[TK_MOUSE_CLICKS] = pressed? m_consecutive_clicks: 0;
+		event[TK_MOUSE_PIXEL_X] = x;
+		event[TK_MOUSE_PIXEL_Y] = y;
 		m_event_handler(std::move(event));
 	}
 

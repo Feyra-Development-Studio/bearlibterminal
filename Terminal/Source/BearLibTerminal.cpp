@@ -258,10 +258,16 @@ void terminal_android_surface(void* native_window)
 		window->AttachSurface((ANativeWindow*)native_window);
 }
 
-void terminal_android_pointer(int action, int x, int y)
+void terminal_android_pointer(int action, int x, int y, int is_touch)
 {
 	if (auto window = AndroidWindowInstance())
-		window->HandlePointer(action, x, y);
+		window->HandlePointer(action, x, y, is_touch != 0);
+}
+
+void terminal_android_touch_slop(int pixels)
+{
+	if (auto window = AndroidWindowInstance())
+		window->SetTouchSlop(pixels);
 }
 
 void terminal_android_key(int code, int pressed, int unicode)
