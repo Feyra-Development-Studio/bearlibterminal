@@ -29,6 +29,9 @@
 // платформах это не всплывало: там его подтягивали соседние заголовки.
 #include "Geometry.hpp"
 #include "Utility.hpp"
+// Константы TK_* объявлены в открытом заголовке; платформенные исходники
+// подключают его сами — так же делает X11Window через Terminal.hpp.
+#include "BearLibTerminal.h"
 
 namespace BearLibTerminal
 {
