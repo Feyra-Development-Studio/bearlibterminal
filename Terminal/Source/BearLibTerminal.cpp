@@ -28,6 +28,7 @@
 #include "Config.hpp"
 #include "Log.hpp"
 #include "Encoding.hpp"
+#include "AndroidAssets.hpp"
 #include <map>
 #include <memory>
 #include <string>
@@ -227,6 +228,15 @@ namespace
 		BearLibTerminal::Log::Instance().Write(parsed, L"[app] " + message);
 	}
 }
+
+#if defined(__ANDROID__)
+void terminal_set_asset_manager(void* manager)
+{
+	// Приложение передаёт указатель, уже полученный из Java. Разбирать JNI
+	// внутри библиотеки незачем: она о Java ничего не знает и знать не должна.
+	BearLibTerminal::SetAssetManager((AAssetManager*)manager);
+}
+#endif
 
 void terminal_log8(int level, const int8_t* message)
 {

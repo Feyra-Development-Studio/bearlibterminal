@@ -21,6 +21,7 @@
 */
 
 #include "Platform.hpp"
+#include "AndroidAssets.hpp"
 #include "Encoding.hpp"
 #include "Utility.hpp"
 #include "Log.hpp"
@@ -281,6 +282,26 @@ namespace BearLibTerminal
 	std::vector<uint8_t> ReadFile(std::wstring name)
 	{
 		name = FixPathSeparators(std::move(name));
+
+#if defined(__ANDROID__)
+		// Ресурсы приложения лежат внутри APK: относительный путь ведёт туда,
+		// а не в файловую систему, где рабочего каталога у приложения по сути
+		// нет. Абсолютные пути оставляем файловой системе — по ним обращаются
+		// ко внешнему хранилищу, и это осмысленно.
+		if (HasAssetManager() && !name.empty() && name[0] != L'/')
+		{
+			try
+			{
+				return ReadAsset(name);
+			}
+			catch (std::exception& e)
+			{
+				// Не нашлось в APK — может найтись на диске. Сообщаем, но не
+				// сдаёмся: молчаливое падение здесь было бы худшим исходом.
+				LOG(Debug, "Asset lookup failed, falling back to file system: " << e.what());
+			}
+		}
+#endif
 		//std::unique_ptr<std::istream> result;
 #if defined(_MSC_VER)
 		std::ifstream file{name, std::ios_base::in|std::ios_base::binary};

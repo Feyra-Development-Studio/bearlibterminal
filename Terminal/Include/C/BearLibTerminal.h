@@ -274,6 +274,18 @@ TERMINAL_API void terminal_layer(int index);
 TERMINAL_API void terminal_color(color_t color);
 TERMINAL_API void terminal_bkcolor(color_t color);
 TERMINAL_API void terminal_composition(int mode);
+#if defined(__ANDROID__)
+/*
+ * Ресурсы приложения на Android лежат внутри APK, и добраться до них можно
+ * только через AAssetManager, который живёт в Java. Приложение передаёт его
+ * сюда один раз при запуске (AAssetManager_fromJava в своей связке с JNI).
+ *
+ * Без этого терминал всё равно работает: шрифт по умолчанию и кодовые
+ * страницы встроены в библиотеку. Не прочитаются только свои наборы тайлов.
+ */
+TERMINAL_API void terminal_set_asset_manager(void* manager);
+#endif
+
 TERMINAL_API void terminal_log8(int level, const int8_t* message);
 TERMINAL_API void terminal_log16(int level, const int16_t* message);
 TERMINAL_API void terminal_log32(int level, const int32_t* message);
