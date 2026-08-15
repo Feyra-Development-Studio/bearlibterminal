@@ -41,6 +41,11 @@ namespace BearLibTerminal
 	public:
 		Terminal();
 		~Terminal();
+#if defined(__ANDROID__)
+		// На Android поверхность и ввод приходят снаружи, из деятельности
+		// приложения, и добраться до окна надо из точек входа библиотеки.
+		Window* GetWindow() { return m_window.get(); }
+#endif
 		int SetOptions(const std::wstring& value);
 		void Refresh();
 		void Clear();

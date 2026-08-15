@@ -28,6 +28,7 @@
 // Вывод Size в поток объявлен здесь, а не в Size.hpp. На настольных
 // платформах это не всплывало: там его подтягивали соседние заголовки.
 #include "Geometry.hpp"
+#include "Utility.hpp"
 
 namespace BearLibTerminal
 {
@@ -36,7 +37,9 @@ namespace BearLibTerminal
 		m_native_window(nullptr),
 		m_display(EGL_NO_DISPLAY),
 		m_surface(EGL_NO_SURFACE),
-		m_context(EGL_NO_CONTEXT)
+		m_context(EGL_NO_CONTEXT),
+		m_last_pointer_press(0),
+		m_consecutive_clicks(0)
 	{ }
 
 	AndroidWindow::~AndroidWindow()
@@ -192,6 +195,56 @@ namespace BearLibTerminal
 		// существует. Это же значение получит и приложение через
 		// TK_SCREEN_WIDTH/TK_SCREEN_HEIGHT, из которых оно считает сетку.
 		return m_size;
+	}
+
+	void AndroidWindow::HandlePointer(int action, int x, int y)
+	{
+		// Положение сообщается всегда, включая нажатие: на сенсорном экране
+		// указателя нет, и до касания библиотека не знает, где палец. Если
+		// послать только нажатие, клетка окажется прежней — то есть игрок
+		// пойдёт не туда, куда ткнул.
+		Event move(TK_MOUSE_MOVE);
+		move[TK_MOUSE_PIXEL_X] = x;
+		move[TK_MOUSE_PIXEL_Y] = y;
+		m_event_handler(std::move(move));
+
+		if (action == kPointerMove)
+			return;
+
+		bool pressed = (action == kPointerDown);
+
+		if (pressed)
+		{
+			// Счёт подряд идущих нажатий — как на настольных платформах,
+			// с тем же порогом в четверть секунды, чтобы двойное касание и
+			// двойной щелчок означали для игры одно и то же.
+			uint64_t now = gettime();
+			uint64_t delta = now - m_last_pointer_press;
+			m_last_pointer_press = now;
+			m_consecutive_clicks = (delta < 250000)? m_consecutive_clicks + 1: 1;
+		}
+
+		Event event(TK_MOUSE_LEFT | (pressed? 0: TK_KEY_RELEASED));
+		event[TK_MOUSE_LEFT] = pressed? 1: 0;
+		event[TK_MOUSE_CLICKS] = pressed? m_consecutive_clicks: 0;
+		m_event_handler(std::move(event));
+	}
+
+	void AndroidWindow::HandleKey(int keycode, bool pressed, int unicode)
+	{
+		if (keycode == 0)
+			return;
+
+		Event event(keycode | (pressed? 0: TK_KEY_RELEASED));
+		event[keycode] = pressed? 1: 0;
+
+		// Печатный знак приходит от деятельности приложения уже разобранным:
+		// раскладки, составные знаки и предсказание ввода живут в Java, и
+		// повторять эту работу здесь было бы и глупо, и хуже.
+		if (pressed && unicode > 0)
+			event[TK_WCHAR] = unicode;
+
+		m_event_handler(std::move(event));
 	}
 
 	int AndroidWindow::PumpEvents()

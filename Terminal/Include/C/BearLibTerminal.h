@@ -284,6 +284,29 @@ TERMINAL_API void terminal_composition(int mode);
  * страницы встроены в библиотеку. Не прочитаются только свои наборы тайлов.
  */
 TERMINAL_API void terminal_set_asset_manager(void* manager);
+
+/*
+ * Поверхность и ввод передаются деятельностью приложения: своей очереди
+ * событий у окна на Android нет, а поверхность выдаёт и отбирает система.
+ *
+ * terminal_android_surface(nullptr) означает, что поверхность отобрали, —
+ * это не ошибка, а обычное сворачивание приложения.
+ *
+ * Касание и мышь приходят одной и той же функцией и разбираются игрой одним
+ * и тем же кодом: события те же самые, TK_MOUSE_*. Значения action совпадают
+ * с AMOTION_EVENT_ACTION_DOWN, _UP и _MOVE.
+ *
+ * terminal_android_key принимает код TK_*, уже переведённый из AKEYCODE_*, и
+ * печатный знак, если он есть: раскладки и составные знаки живут в Java, и
+ * повторять эту работу в библиотеке было бы хуже.
+ */
+#define TK_ANDROID_POINTER_DOWN 0
+#define TK_ANDROID_POINTER_UP   1
+#define TK_ANDROID_POINTER_MOVE 2
+
+TERMINAL_API void terminal_android_surface(void* native_window);
+TERMINAL_API void terminal_android_pointer(int action, int x, int y);
+TERMINAL_API void terminal_android_key(int code, int pressed, int unicode);
 #endif
 
 TERMINAL_API void terminal_log8(int level, const int8_t* message);

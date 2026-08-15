@@ -27,6 +27,7 @@
 
 #include "Window.hpp"
 #include "Size.hpp"
+#include <cstdint>
 #include <EGL/egl.h>
 #include <android/native_window.h>
 
@@ -74,11 +75,30 @@ namespace BearLibTerminal
 		void AttachSurface(ANativeWindow* window);
 		void DetachSurface();
 
+		/* Ввод приходит снаружи, из деятельности приложения: своей очереди
+		   событий у окна на Android нет.
+
+		   Касание и мышь намеренно не различаются. Мышь в библиотеке есть
+		   давно и работает на всех настольных платформах; касание приходит
+		   теми же TK_MOUSE_*, и разбирается тем же кодом игры. Отдельного
+		   способа ввода для Android не заводится — иначе игре пришлось бы
+		   знать, на чём её запустили. */
+		void HandlePointer(int action, int x, int y);
+		void HandleKey(int keycode, bool pressed, int unicode);
+
+		// Значения action — те же, что у AMotionEvent, чтобы деятельности
+		// приложения не приходилось их переводить.
+		static const int kPointerDown = 0;
+		static const int kPointerUp = 1;
+		static const int kPointerMove = 2;
+
 	private:
 		bool CreateContext();
 		void DestroyContext();
 
 		ANativeWindow* m_native_window;
+		uint64_t m_last_pointer_press;
+		int m_consecutive_clicks;
 		EGLDisplay m_display;
 		EGLSurface m_surface;
 		EGLContext m_context;

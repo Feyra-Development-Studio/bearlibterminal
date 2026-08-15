@@ -29,6 +29,7 @@
 #include "Log.hpp"
 #include "Encoding.hpp"
 #include "AndroidAssets.hpp"
+#include "AndroidWindow.hpp"
 #include <map>
 #include <memory>
 #include <string>
@@ -235,6 +236,38 @@ void terminal_set_asset_manager(void* manager)
 	// Приложение передаёт указатель, уже полученный из Java. Разбирать JNI
 	// внутри библиотеки незачем: она о Java ничего не знает и знать не должна.
 	BearLibTerminal::SetAssetManager((AAssetManager*)manager);
+}
+
+namespace
+{
+	// Окно у терминала одно, и добраться до него надо из точек входа, которые
+	// зовёт деятельность приложения.
+	BearLibTerminal::AndroidWindow* AndroidWindowInstance()
+	{
+		if (!g_instance)
+			return nullptr;
+		// На Android другого воплощения окна не существует, приведение
+		// безопасно: Window::Create там возвращает именно AndroidWindow.
+		return static_cast<BearLibTerminal::AndroidWindow*>(g_instance->GetWindow());
+	}
+}
+
+void terminal_android_surface(void* native_window)
+{
+	if (auto window = AndroidWindowInstance())
+		window->AttachSurface((ANativeWindow*)native_window);
+}
+
+void terminal_android_pointer(int action, int x, int y)
+{
+	if (auto window = AndroidWindowInstance())
+		window->HandlePointer(action, x, y);
+}
+
+void terminal_android_key(int code, int pressed, int unicode)
+{
+	if (auto window = AndroidWindowInstance())
+		window->HandleKey(code, pressed != 0, unicode);
 }
 #endif
 
